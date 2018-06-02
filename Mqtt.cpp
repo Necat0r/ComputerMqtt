@@ -9,8 +9,7 @@ Mqtt::Mqtt(const char * clientId, const char * host, int port, const Message& la
 {
 	mosqpp::lib_init();
 
-	const bool retain = true;
-	will_set(lastWill.topic.c_str(), strlen(lastWill.payload.c_str()), lastWill.payload.c_str(), AtLeastOnce, retain);
+	will_set(lastWill.topic.c_str(), strlen(lastWill.payload.c_str()), lastWill.payload.c_str(), AtLeastOnce, Retain);
 
 	connect_async(host, port);
 	loop_start();

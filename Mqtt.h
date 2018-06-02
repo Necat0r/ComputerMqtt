@@ -12,6 +12,12 @@ class Mqtt : private mosqpp::mosquittopp
 		ExactlyOnce = 2,
 	};
 
+	enum Retain : bool
+	{
+		Retain = true,
+		DoNotRetain = false,
+	};
+
 public:
 	struct Message
 	{
