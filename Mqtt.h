@@ -2,6 +2,7 @@
 
 #include <string>
 #include <mosquittopp.h>
+#include <vector>
 
 class Mqtt : private mosqpp::mosquittopp
 {
@@ -25,7 +26,9 @@ public:
 		std::string payload;
 	};
 
-	Mqtt(const char* clientId, const char* host, int port, const Message& lastWill);
+	using Wills = std::vector<Message>;
+
+	Mqtt(const char* clientId, const char* host, int port, const Wills& wills);
 	~Mqtt();
 
 	void subscribe(const char* topic);

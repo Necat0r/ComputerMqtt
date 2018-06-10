@@ -4,12 +4,14 @@
 
 #pragma comment(lib, "mosquittopp.lib")
 
-Mqtt::Mqtt(const char * clientId, const char * host, int port, const Message& lastWill)
+Mqtt::Mqtt(const char * clientId, const char * host, int port, const Wills& wills)
 : mosquittopp(clientId, true /*clean session*/)
 {
 	mosqpp::lib_init();
 
-	will_set(lastWill.topic.c_str(), strlen(lastWill.payload.c_str()), lastWill.payload.c_str(), AtLeastOnce, Retain);
+	// Set wills
+	for (auto&& will : wills)
+		will_set(will.topic.c_str(), strlen(will.payload.c_str()), will.payload.c_str(), AtLeastOnce, Retain);
 
 	connect_async(host, port);
 	loop_start();
