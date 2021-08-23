@@ -6,6 +6,8 @@
 #include <iostream>
 #include <windows.h>
 
+#include <Audioclient.h>
+
 // Shamelessly stolen from https://stackoverflow.com/questions/4804298/how-to-convert-wstring-into-string
 std::wstring s2ws(const std::string& str)
 {
@@ -25,7 +27,7 @@ std::string ws2s(const std::wstring& wstr)
 
 std::ostream& operator<<(std::ostream& stream, const AudioManager::DeviceInfo& info)
 {
-	stream << "Id: " << info.deviceId << ", volume: " << info.volume << ", muted: " << info.muted ? "true" : "false";
+	stream << "Id: " << info.deviceId << ", volume: " << info.volume << ", muted: " << (info.muted ? "true" : "false") << ", session: " << info.sessionName;
 
 	return stream;
 }
@@ -53,6 +55,10 @@ AudioManager::AudioManager(Callback&& callback)
 
 AudioManager::~AudioManager()
 {
+	if (m_audioSessionControl)
+		m_audioSessionControl->UnregisterAudioSessionNotification(this);
+	if (m_volume)
+		m_volume->UnregisterControlChangeNotify(this);
 	if (m_enumerator)
 		m_enumerator->UnregisterEndpointNotificationCallback(this);
 
@@ -98,20 +104,21 @@ void AudioManager::threadRun()
 
 void AudioManager::setVolume(float volume)
 {
-	m_volume->SetMasterVolumeLevelScalar(volume, &context);
+	if (m_volume)
+		m_volume->SetMasterVolumeLevelScalar(volume, &context);
 }
 
 void AudioManager::setMute(bool mute)
 {
-	if (!m_volume)
-		return;
-
-	m_volume->SetMute(mute ? TRUE : FALSE, &context);
+	if (m_volume)
+		m_volume->SetMute(mute ? TRUE : FALSE, &context);
 }
 
 void AudioManager::refreshDeviceInfo()
 {
 	// Clean up previous registrations
+	if (m_audioSessionControl)
+		m_audioSessionControl->UnregisterAudioSessionNotification(this);
 	if (m_volume)
 		m_volume->UnregisterControlChangeNotify(this);
 	m_volume.release();
@@ -135,6 +142,27 @@ void AudioManager::refreshDeviceInfo()
 
 	BOOL mute = FALSE;
 	m_volume->GetMute(&mute);
+
+
+	// Get AudioSession
+	IAudioSessionManager* audioSessionManager = nullptr;
+
+	m_device->Activate(__uuidof(IAudioSessionManager), CLSCTX_INPROC_SERVER, NULL, (LPVOID*)&audioSessionManager);
+
+	audioSessionManager->GetAudioSessionControl(
+		&GUID_NULL,		// Get the default audio session.
+		FALSE,			// The session is not cross-process.
+		&m_audioSessionControl);
+
+	audioSessionManager->Release();
+
+	m_audioSessionControl->RegisterAudioSessionNotification(this);
+
+	LPWSTR wideDisplayName = nullptr;
+	m_audioSessionControl->GetDisplayName(&wideDisplayName);
+	std::string displayName = ws2s(wideDisplayName);
+	CoTaskMemFree(wideDisplayName);
+
 
 	// Update device info
 	DeviceInfo info{ deviceId, volume, mute == TRUE };
@@ -164,27 +192,66 @@ HRESULT AudioManager::OnDefaultDeviceChanged(EDataFlow flow, ERole role, LPCWSTR
 
 HRESULT AudioManager::OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA pNotify)
 {
-	// Get device ID
-	LPWSTR deviceId = nullptr;
-	m_device->GetId(&deviceId);
-	std::string deviceIdStr = ws2s(deviceId);
-	CoTaskMemFree(deviceId);
+	m_condition.notify_all();
 
-	const DeviceInfo info{ deviceIdStr, pNotify->fMasterVolume, pNotify->bMuted == TRUE};
+	//// Get device ID
+	//LPWSTR deviceId = nullptr;
+	//m_device->GetId(&deviceId);
+	//std::string deviceIdStr = ws2s(deviceId);
+	//CoTaskMemFree(deviceId);
 
-	{
-		std::unique_lock<std::mutex> lock(m_mutex);
+	//const DeviceInfo info{ deviceIdStr, pNotify->fMasterVolume, pNotify->bMuted == TRUE};
 
-		if (info == m_deviceInfo)
-			return NOERROR;
+	//{
+	//	std::unique_lock<std::mutex> lock(m_mutex);
 
-		m_deviceInfo = info;
-	}
+	//	if (info == m_deviceInfo)
+	//		return NOERROR;
 
-	std::cout << "New state. " << m_deviceInfo << std::endl;
+	//	m_deviceInfo = info;
+	//}
 
-	if (m_callback)
-		m_callback(info);
+	//std::cout << "New state. " << m_deviceInfo << std::endl;
+
+	//if (m_callback)
+	//	m_callback(info);
 
 	return NOERROR;
+}
+
+HRESULT __stdcall AudioManager::OnDisplayNameChanged(LPCWSTR NewDisplayName, LPCGUID EventContext)
+{
+	m_condition.notify_all();
+
+	return S_OK;
+}
+
+HRESULT __stdcall AudioManager::OnIconPathChanged(LPCWSTR NewIconPath, LPCGUID EventContext)
+{
+	return S_OK;
+}
+
+HRESULT __stdcall AudioManager::OnSimpleVolumeChanged(float NewVolume, BOOL NewMute, LPCGUID EventContext)
+{
+	return S_OK;
+}
+
+HRESULT __stdcall AudioManager::OnChannelVolumeChanged(DWORD ChannelCount, float NewChannelVolumeArray[], DWORD ChangedChannel, LPCGUID EventContext)
+{
+	return S_OK;
+}
+
+HRESULT __stdcall AudioManager::OnGroupingParamChanged(LPCGUID NewGroupingParam, LPCGUID EventContext)
+{
+	return S_OK;
+}
+
+HRESULT __stdcall AudioManager::OnStateChanged(AudioSessionState NewState)
+{
+	return S_OK;
+}
+
+HRESULT __stdcall AudioManager::OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason)
+{
+	return S_OK;
 }

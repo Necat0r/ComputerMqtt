@@ -10,12 +10,13 @@
 
 static const char* ClientId = "computerMqtt";
 
-static const char* PowerStatus = "computer/power/status";
+static const char* PowerStatus = "computer/power";
 static const char* PowerControl = "computer/power/control";
+static const char* MonitorStatus = "computer/monitor";
 static const char* MonitorControl = "computer/monitor/control";
 
 // Audio constants
-// FIXME - Make output more generic. 
+// FIXME - Make output more generic.
 static const char* AudioOutputStatus = "computer/audio/output";
 static const char* AudioOutputControl = "computer/audio/output/control";
 static const char* AudioVolumeStatus = "computer/audio/volume";
@@ -23,7 +24,13 @@ static const char* AudioVolumeControl = "computer/audio/volume/control";
 static const char* AudioMuteStatus = "computer/audio/mute";
 static const char* AudioMuteControl = "computer/audio/mute/control";
 
+
+const char* recieverDeviceIds[] = {
+	"{0.0.0.00000000}.{ab6192b9-c22c-44c1-9086-14b4772011bf}",
+	"{0.0.0.00000000}.{bbf40758-edce-4f98-b10d-63a1b25cdc14}" };
+
 const char* receiverDeviceId = "{0.0.0.00000000}.{ab6192b9-c22c-44c1-9086-14b4772011bf}";
+const char* receiverDeviceId2 = "{0.0.0.00000000}.{bbf40758-edce-4f98-b10d-63a1b25cdc14}";
 const char* headphonesDeviceId = "{0.0.0.00000000}.{f5d2779d-740e-49ea-b3cd-eaa9e8e0d2bc}";
 //const char* viveDeviceId = "{0.0.0.00000000}.{08735c7b-757c-4332-9976-555a5ec79fca}";
 
@@ -63,12 +70,15 @@ public:
 		: Mqtt(ClientId, host, port,
 			// Last wills
 			{
-				{ PowerStatus, "true" },
+				// TODO - This isn't quick enough! Need to detect power status directly.
+				{ PowerStatus, "false" },	// Power status will automagically be handled by last will
+				{ MonitorStatus, "false" },
 				{ AudioOutputStatus, "false" },
 				{ AudioVolumeStatus, "0" },
 				{ AudioMuteStatus, "false" },
 			})
 		, m_audioManager([this](const AudioManager::DeviceInfo& info) { this->onAudioCallback(info); })
+		, m_monitor([this](bool monitorOn) { this->onMonitorPowerCallback(monitorOn); })
 	{}
 
 	virtual void onConnected() override
@@ -82,6 +92,7 @@ public:
 		subscribe(AudioMuteControl);
 
 		publish({ PowerStatus, "true" }, true);
+		publish({ MonitorStatus, "true" }, true);
 	}
 
 	virtual void onMessage(const Message& message) override
@@ -126,7 +137,16 @@ public:
 		}
 
 		printf("Turning monitor %s\n", value ? "On" : "Off");
-		setMonitorPower(value);
+		m_monitor.setPower(value);
+	}
+
+	void onMonitorPowerCallback(bool monitorOn)
+	{
+		Mqtt::Message message;
+		message.topic = MonitorStatus;
+		message.payload = monitorOn ? "true" : "false";
+
+		publish(message, true);
 	}
 
 	void onAudioCallback(const AudioManager::DeviceInfo& newInfo)
@@ -136,7 +156,11 @@ public:
 		// DeviceId
 		if (newInfo.deviceId != m_lastInfo.deviceId)
 		{
-			const bool receiverOutput = newInfo.deviceId == receiverDeviceId;
+			bool receiverOutput = false;
+			for (int i = 0; i < sizeof(recieverDeviceIds) / sizeof(recieverDeviceIds[0]); ++i)
+				receiverOutput = receiverOutput || newInfo.deviceId == recieverDeviceIds[i];
+
+			//const bool receiverOutput = newInfo.deviceId == receiverDeviceId || newInfo.deviceId == receiverDeviceId2;
 			message.topic = AudioOutputStatus;
 			message.payload = receiverOutput ? "true" : "false";
 			publish(message, true);
@@ -208,6 +232,7 @@ public:
 
 	AudioManager m_audioManager;
 	AudioManager::DeviceInfo m_lastInfo;
+	Monitor m_monitor;
 };
 
 int main(int argc, char* argv[])

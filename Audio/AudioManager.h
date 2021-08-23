@@ -8,25 +8,29 @@
 #include <mutex>
 #include <string>
 #include <condition_variable>
+#include <functional>
 
 #include <endpointvolume.h>
 
 #include <Audiopolicy.h>
 #include <Mmdeviceapi.h>
 
-class AudioManager : private IMMNotificationClient, private IAudioEndpointVolumeCallback
+class AudioManager : private IMMNotificationClient, private IAudioEndpointVolumeCallback, private IAudioSessionEvents
 {
 public:
 	struct DeviceInfo
 	{
 		bool operator==(const DeviceInfo& other) const
 		{
-			return deviceId == other.deviceId && volume == other.volume && muted == other.muted;
+			return deviceId == other.deviceId && volume == other.volume && muted == other.muted && sessionName == other.sessionName;
 		}
 
 		std::string deviceId;
 		float volume;
 		bool muted;
+
+		std::string sessionName;
+
 	};
 
 	using Callback = std::function<void(const DeviceInfo&)>;
@@ -58,6 +62,15 @@ private:
 	// Inherited via IAudioEndpointVolumeCallback
 	virtual HRESULT STDMETHODCALLTYPE OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA pNotify) override;
 
+	// Inherited via IAudioSessionEvents
+	virtual HRESULT __stdcall OnDisplayNameChanged(LPCWSTR NewDisplayName, LPCGUID EventContext) override;
+	virtual HRESULT __stdcall OnIconPathChanged(LPCWSTR NewIconPath, LPCGUID EventContext) override;
+	virtual HRESULT __stdcall OnSimpleVolumeChanged(float NewVolume, BOOL NewMute, LPCGUID EventContext) override;
+	virtual HRESULT __stdcall OnChannelVolumeChanged(DWORD ChannelCount, float NewChannelVolumeArray[], DWORD ChangedChannel, LPCGUID EventContext) override;
+	virtual HRESULT __stdcall OnGroupingParamChanged(LPCGUID NewGroupingParam, LPCGUID EventContext) override;
+	virtual HRESULT __stdcall OnStateChanged(AudioSessionState NewState) override;
+	virtual HRESULT __stdcall OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason) override;
+
 	Callback m_callback;
 	DeviceInfo m_deviceInfo;
 	using Devices = std::vector<DeviceInfo>;
@@ -70,4 +83,5 @@ private:
 	SafePtr<IMMDeviceEnumerator> m_enumerator;
 	SafePtr<IMMDevice> m_device;
 	SafePtr<IAudioEndpointVolume> m_volume;
+	SafePtr<IAudioSessionControl> m_audioSessionControl;
 };
