@@ -4,6 +4,7 @@
 #include "Power.h"
 #include "Monitor.h"
 #include "Audio\AudioManager.h"
+#include "HomeAssistant.h"
 
 #include <algorithm>
 #include <iostream>
@@ -24,6 +25,8 @@ static const char* AudioVolumeControl = "computer/audio/volume/control";
 static const char* AudioMuteStatus = "computer/audio/mute";
 static const char* AudioMuteControl = "computer/audio/mute/control";
 
+static const char* HomeAssistantBirthTopic = "homeassistant/status";
+static const char* HomeAssistantDiscoveryTopic = "homeassistant/device/computer/config";
 
 const char* recieverDeviceIds[] = {
 	"{0.0.0.00000000}.{ab6192b9-c22c-44c1-9086-14b4772011bf}",
@@ -93,6 +96,10 @@ public:
 
 		publish({ PowerStatus, "true" }, true);
 		publish({ MonitorStatus, "true" }, true);
+
+		subscribe(HomeAssistantBirthTopic);
+
+		sendHomeAssistantDiscoveryMessage();
 	}
 
 	virtual void onMessage(const Message& message) override
@@ -109,6 +116,8 @@ public:
 			handleAudioVolume(message);
 		else if (topic == AudioMuteControl)
 			handleAudioMute(message);
+		else if (topic == HomeAssistantBirthTopic)
+			handleHomeAssistantBirth(message);
 	}
 
 	void handlePower(const Message& message)
@@ -228,6 +237,114 @@ public:
 		}
 
 		m_audioManager.setMute(value);
+	}
+
+	void handleHomeAssistantBirth(const Message& message)
+	{
+		bool online = message.payload == "online";
+		if (online)
+			sendHomeAssistantDiscoveryMessage();
+	}
+
+	void sendHomeAssistantDiscoveryMessage()
+	{
+		ha::Discovery discovery;
+
+		// Availability is the same between all components
+		ha::Component::Availability availability;
+		availability.topic = PowerStatus;
+
+		// FIXME - Should uniqueId be globally or device-locally unique?
+
+		discovery.device = ha::Discovery::Device{
+			.name = "Computer",
+			.identifier = "computer",
+		};
+
+		discovery.origin = ha::Discovery::Origin{
+			.name = "Computer",
+			.softwareVersion = "1.0",
+			.supportUrl = "http://glhf"
+		};
+
+		// Power switch
+		{
+			ha::Switch power;
+			power.name = "Power";
+			power.uniqueId = "power";
+
+			power.icon = "mdi:power";
+
+			power.stateTopic = PowerStatus;
+			power.commandTopic = PowerControl;
+
+			power.availability = availability;
+
+			discovery.switches.push_back(std::move(power));
+		}
+
+		// Monitor switch
+		{
+			ha::Switch monitor;
+			monitor.name = "Monitor";
+			monitor.uniqueId = "monitor";
+			monitor.deviceClass = "switch";
+
+			monitor.icon = "mdi:monitor";
+
+			monitor.stateTopic = MonitorStatus;
+			monitor.commandTopic = MonitorControl;
+
+			monitor.availability = availability;
+
+			discovery.switches.push_back(std::move(monitor));
+		}
+
+		// Volume
+		{
+			ha::Number volume;
+
+			volume.name = "Volume";
+			volume.uniqueId = "volume";
+			//volume.deviceClass = "None";
+
+			volume.icon = "mdi:speaker";
+
+			volume.stateTopic = AudioVolumeStatus;
+			volume.commandTopic = AudioVolumeControl;
+
+			volume.mode = ha::Number::Mode::Slider;
+			volume.min = 0;
+			volume.max = 100;
+
+			volume.unitOfMeasurement = "%";
+
+			volume.availability = availability;
+
+			discovery.numbers.push_back(std::move(volume));
+		}
+
+		// Mute
+		{
+			ha::Switch mute;
+
+			mute.name = "Mute";
+			mute.uniqueId = "mute";
+			mute.deviceClass = "switch";
+
+			mute.icon = "mdi:volume-mute";
+
+			mute.stateTopic = AudioMuteStatus;
+			mute.commandTopic = AudioMuteControl;
+
+			mute.availability = availability;
+
+			discovery.switches.push_back(std::move(mute));
+		}
+
+		std::string discoveryPayload = ha::toJson(discovery);
+
+		publish({ HomeAssistantDiscoveryTopic, discoveryPayload }, false);
 	}
 
 	AudioManager m_audioManager;

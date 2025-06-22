@@ -8,6 +8,7 @@
     <ClCompile Include="Audio\AudioManager.cpp">
       <Filter>Audio</Filter>
     </ClCompile>
+    <ClCompile Include="HomeAssistant.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Monitor.h" />
@@ -22,6 +23,7 @@
     <ClInclude Include="Audio\AudioManager.h">
       <Filter>Audio</Filter>
     </ClInclude>
+    <ClInclude Include="HomeAssistant.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />

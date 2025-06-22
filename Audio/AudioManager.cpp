@@ -1,12 +1,17 @@
+#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+
 #include "AudioManager.h"
 #include "PolicyConfig.h"
 
 #include <cassert>
 #include <codecvt>
 #include <iostream>
+
 #include <windows.h>
 
 #include <Audioclient.h>
+
+#define UNUSED(x) (void)x
 
 // Shamelessly stolen from https://stackoverflow.com/questions/4804298/how-to-convert-wstring-into-string
 std::wstring s2ws(const std::string& str)
@@ -190,7 +195,7 @@ HRESULT AudioManager::OnDefaultDeviceChanged(EDataFlow flow, ERole role, LPCWSTR
 	return NOERROR;
 }
 
-HRESULT AudioManager::OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA pNotify)
+HRESULT AudioManager::OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA /*pNotify*/)
 {
 	m_condition.notify_all();
 
@@ -221,6 +226,9 @@ HRESULT AudioManager::OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA pNotify)
 
 HRESULT __stdcall AudioManager::OnDisplayNameChanged(LPCWSTR NewDisplayName, LPCGUID EventContext)
 {
+	UNUSED(NewDisplayName);
+	UNUSED(EventContext);
+
 	m_condition.notify_all();
 
 	return S_OK;
@@ -228,30 +236,51 @@ HRESULT __stdcall AudioManager::OnDisplayNameChanged(LPCWSTR NewDisplayName, LPC
 
 HRESULT __stdcall AudioManager::OnIconPathChanged(LPCWSTR NewIconPath, LPCGUID EventContext)
 {
+	UNUSED(NewIconPath);
+	UNUSED(EventContext);
+
 	return S_OK;
 }
 
 HRESULT __stdcall AudioManager::OnSimpleVolumeChanged(float NewVolume, BOOL NewMute, LPCGUID EventContext)
 {
+	UNUSED(NewVolume);
+	UNUSED(NewMute);
+	UNUSED(EventContext);
+
 	return S_OK;
 }
 
 HRESULT __stdcall AudioManager::OnChannelVolumeChanged(DWORD ChannelCount, float NewChannelVolumeArray[], DWORD ChangedChannel, LPCGUID EventContext)
 {
+	UNUSED(ChannelCount);
+	UNUSED(NewChannelVolumeArray);
+	UNUSED(ChangedChannel);
+	UNUSED(EventContext);
+
 	return S_OK;
 }
 
 HRESULT __stdcall AudioManager::OnGroupingParamChanged(LPCGUID NewGroupingParam, LPCGUID EventContext)
 {
+	UNUSED(NewGroupingParam);
+	UNUSED(EventContext);
+
 	return S_OK;
 }
 
 HRESULT __stdcall AudioManager::OnStateChanged(AudioSessionState NewState)
 {
+	UNUSED(NewState);
+
 	return S_OK;
 }
 
 HRESULT __stdcall AudioManager::OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason)
 {
+	UNUSED(DisconnectReason);
+
 	return S_OK;
 }
+
+#undef _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
