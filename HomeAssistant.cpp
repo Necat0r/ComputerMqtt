@@ -16,13 +16,6 @@ std::string ha::toJson(Discovery discovery)
 		{ "device", {
 			{ "name", discovery.device.name },
 			{ "identifiers", json::array({ discovery.device.identifier })},
-
-			{ "mf", "Bla electronics" },
-			{ "mdl", "xya" },
-			{ "sw", "1.0" },
-			{ "sn",  "ea334450945afc"},
-			{"hw",  "1.0rev2"}
-
 		}},
 		{ "origin", {
 			{ "name", discovery.origin.name },
