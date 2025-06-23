@@ -1,11 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31613.86
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35728.132 d17.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ComputerMqtt", "ComputerMqtt.vcxproj", "{8C68632A-5443-48C3-A791-F0C8C8D70861}"
-EndProject
-Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Setup", "Setup\Setup.vdproj", "{BC2F3131-9464-43AE-B64D-EFA06F40D392}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +21,6 @@ Global
 		{8C68632A-5443-48C3-A791-F0C8C8D70861}.Release|x64.Build.0 = Release|x64
 		{8C68632A-5443-48C3-A791-F0C8C8D70861}.Release|x86.ActiveCfg = Release|Win32
 		{8C68632A-5443-48C3-A791-F0C8C8D70861}.Release|x86.Build.0 = Release|Win32
-		{BC2F3131-9464-43AE-B64D-EFA06F40D392}.Debug|x64.ActiveCfg = Debug
-		{BC2F3131-9464-43AE-B64D-EFA06F40D392}.Debug|x86.ActiveCfg = Debug
-		{BC2F3131-9464-43AE-B64D-EFA06F40D392}.Release|x64.ActiveCfg = Release
-		{BC2F3131-9464-43AE-B64D-EFA06F40D392}.Release|x86.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
