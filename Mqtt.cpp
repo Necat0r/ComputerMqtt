@@ -13,6 +13,9 @@ Mqtt::Mqtt(const char * clientId, const char * host, int port, const Wills& will
 	for (auto&& will : wills)
 		will_set(will.topic.c_str(), strlen(will.payload.c_str()), will.payload.c_str(), AtLeastOnce, Retain);
 
+	// Home assistant seem intent on having a pointless password
+	username_pw_set("ha", "ha");
+
 	connect_async(host, port);
 	loop_start();
 }

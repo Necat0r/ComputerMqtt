@@ -6,6 +6,7 @@ Allows turning power off as well as turning the monitor on and off
 * Power status is reported as either 'true' or 'false' to ** computer/power/status **
 * Suspend the machine by publishing 'false' to ** computer/power/control **
 * Turn on/off the monitor by publishing 'true'/'false' to ** computer/monitor/control **
+* Automatically publishes devices to Home Assistant
 
 ## Building it
 See https://github.com/Necat0r/BtMqtt for instructions
