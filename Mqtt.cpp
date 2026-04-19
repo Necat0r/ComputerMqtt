@@ -2,8 +2,6 @@
 
 #include <cstring>
 
-#pragma comment(lib, "mosquittopp.lib")
-
 Mqtt::Mqtt(const char * clientId, const char * host, int port, const Wills& wills)
 : mosquittopp(clientId, true /*clean session*/)
 {
@@ -11,7 +9,7 @@ Mqtt::Mqtt(const char * clientId, const char * host, int port, const Wills& will
 
 	// Set wills
 	for (auto&& will : wills)
-		will_set(will.topic.c_str(), strlen(will.payload.c_str()), will.payload.c_str(), AtLeastOnce, Retain);
+		will_set(will.topic.c_str(), (int)strlen(will.payload.c_str()), will.payload.c_str(), AtLeastOnce, Retain);
 
 	// Home assistant seem intent on having a pointless password
 	username_pw_set("ha", "ha");
@@ -33,7 +31,7 @@ void Mqtt::subscribe(const char* topic)
 
 void Mqtt::publish(const Message & message, bool retain)
 {
-	mosquittopp::publish(nullptr, message.topic.c_str(), strlen(message.payload.c_str()), message.payload.c_str(), AtLeastOnce, retain);
+	mosquittopp::publish(nullptr, message.topic.c_str(), (int)strlen(message.payload.c_str()), message.payload.c_str(), AtLeastOnce, retain);
 }
 
 void Mqtt::on_connect(int rc)
