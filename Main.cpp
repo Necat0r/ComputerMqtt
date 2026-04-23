@@ -70,16 +70,7 @@ class ComputerMqtt : public Mqtt
 {
 public:
 	ComputerMqtt(const char* host, int port)
-		: Mqtt(ClientId, host, port,
-			// Last wills
-			{
-				// TODO - This isn't quick enough! Need to detect power status directly.
-				{ PowerStatus, "false" },	// Power status will automagically be handled by last will
-				{ MonitorStatus, "false" },
-				{ AudioOutputStatus, "false" },
-				{ AudioVolumeStatus, "0" },
-				{ AudioMuteStatus, "false" },
-			})
+		: Mqtt(ClientId, host, port)
 		, m_audioManager([this](const AudioManager::DeviceInfo& info) { this->onAudioCallback(info); })
 		, m_monitor([this](bool monitorOn) { this->onMonitorPowerCallback(monitorOn); })
 	{}
@@ -98,6 +89,15 @@ public:
 		publish({ MonitorStatus, "true" }, true);
 
 		subscribe(HomeAssistantBirthTopic);
+
+		// Last wills
+		setWills({
+			{ PowerStatus, "false" },
+			{ MonitorStatus, "false" },
+			{ AudioOutputStatus, "false" },
+			{ AudioVolumeStatus, "0" },
+			{ AudioMuteStatus, "false" },
+		});
 
 		sendHomeAssistantDiscoveryMessage();
 	}
@@ -375,6 +375,7 @@ int main(int argc, char* argv[])
 
 	while (true)
 	{
+		mqtt.loop();
 		Sleep(1000);
 	}
 

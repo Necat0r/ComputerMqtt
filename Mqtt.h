@@ -28,11 +28,15 @@ public:
 
 	using Wills = std::vector<Message>;
 
-	Mqtt(const char* clientId, const char* host, int port, const Wills& wills);
+	Mqtt(const char* clientId, const char* host, int port);
 	~Mqtt();
+
+	void loop();
 
 	void subscribe(const char* topic);
 	void publish(const Message& message, bool retain = false);
+
+	void setWills(const Wills& wills);
 
 protected:
 	virtual void onConnected() = 0;
