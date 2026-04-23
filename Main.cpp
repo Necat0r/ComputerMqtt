@@ -100,6 +100,10 @@ public:
 		});
 
 		sendHomeAssistantDiscoveryMessage();
+
+		initPowerNotifications([this](bool resumed) {
+			publish({ PowerStatus, resumed ? "true" : "false" }, true);
+		});
 	}
 
 	virtual void onMessage(const Message& message) override
@@ -133,6 +137,12 @@ public:
 			return;
 
 		printf("Suspending machine");
+
+		Mqtt::Message statusMessage;
+		statusMessage.topic = PowerStatus;
+		statusMessage.payload = "false";
+		publish(statusMessage, true);
+
 		standby();
 	}
 
