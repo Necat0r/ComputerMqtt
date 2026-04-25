@@ -7,6 +7,7 @@
 #include "HomeAssistant.h"
 #include "Log.h"
 
+#include <Windows.h>
 #include <algorithm>
 
 static const char* ClientId = "computerMqtt";
@@ -362,6 +363,31 @@ public:
 	Monitor m_monitor;
 };
 
+// ---- Win32 message loop infrastructure ----
+
+static DWORD g_mainThreadId = 0;
+
+static BOOL WINAPI ctrlHandler(DWORD ctrlType)
+{
+	if (ctrlType == CTRL_C_EVENT || ctrlType == CTRL_CLOSE_EVENT)
+	{
+		PostThreadMessage(g_mainThreadId, WM_QUIT, 0, 0);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+static LRESULT CALLBACK msgWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	if (msg == WM_TIMER && wParam == 1)
+	{
+		auto* mqtt = reinterpret_cast<ComputerMqtt*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+		if (mqtt) mqtt->loop();
+		return 0;
+	}
+	return DefWindowProc(hwnd, msg, wParam, lParam);
+}
+
 int main(int argc, char* argv[])
 {
 	if (argc < 3)
@@ -381,14 +407,33 @@ int main(int argc, char* argv[])
 
 	Log::enableConsole();
 
+	g_mainThreadId = GetCurrentThreadId();
+	SetConsoleCtrlHandler(ctrlHandler, TRUE);
+
+	// Hidden message-only window — receives WM_TIMER and will host the tray icon.
+	HINSTANCE hInstance = GetModuleHandle(nullptr);
+	WNDCLASSEX wc{};
+	wc.cbSize        = sizeof(wc);
+	wc.lpfnWndProc   = msgWndProc;
+	wc.hInstance     = hInstance;
+	wc.lpszClassName = L"ComputerMqttMsg";
+	RegisterClassEx(&wc);
+
+	HWND hwnd = CreateWindowEx(0, L"ComputerMqttMsg", nullptr, 0,
+		0, 0, 0, 0, HWND_MESSAGE, nullptr, hInstance, nullptr);
+
 	Log::write("Starting");
 	ComputerMqtt mqtt(host, port);
 
-	while (true)
-	{
-		mqtt.loop();
-		Sleep(1000);
-	}
+	SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&mqtt));
+	SetTimer(hwnd, 1, 1000, nullptr);
 
+	MSG winMsg{};
+	while (GetMessage(&winMsg, nullptr, 0, 0))
+		DispatchMessage(&winMsg);
+
+	KillTimer(hwnd, 1);
+	DestroyWindow(hwnd);
+	Log::write("Shutting down");
 	return 0;
 }
