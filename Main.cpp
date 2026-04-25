@@ -5,9 +5,9 @@
 #include "Monitor.h"
 #include "Audio\AudioManager.h"
 #include "HomeAssistant.h"
+#include "Log.h"
 
 #include <algorithm>
-#include <iostream>
 
 static const char* ClientId = "computerMqtt";
 
@@ -129,14 +129,14 @@ public:
 		bool value = false;
 		if (!parseBool(value, message.payload.c_str()))
 		{
-			printf("Could not parse data for topic: %s", PowerControl);
+			Log::write("Could not parse data for topic: %s", PowerControl);
 			return;
 		}
 
 		if (value == true)
 			return;
 
-		printf("Suspending machine");
+		Log::write("Suspending machine");
 
 		Mqtt::Message statusMessage;
 		statusMessage.topic = PowerStatus;
@@ -151,11 +151,11 @@ public:
 		bool value = false;
 		if (!parseBool(value, message.payload.c_str()))
 		{
-			printf("Could not parse data for topic: %s", MonitorControl);
+			Log::write("Could not parse data for topic: %s", MonitorControl);
 			return;
 		}
 
-		printf("Turning monitor %s\n", value ? "On" : "Off");
+		Log::write("Turning monitor %s", value ? "On" : "Off");
 		m_monitor.setPower(value);
 	}
 
@@ -210,7 +210,7 @@ public:
 		bool value = false;
 		if (!parseBool(value, message.payload.c_str()))
 		{
-			std::cerr << "Could not parse data for topic: " << message.topic;
+			Log::write("Could not parse data for topic: %s", message.topic.c_str());
 			return;
 		}
 
@@ -229,7 +229,7 @@ public:
 		auto result = sscanf(message.payload.c_str(), "%d", &scaledVolume);
 		if (result != 1)
 		{
-			std::cerr << "Failed parsing payload: \"" << message.payload << "\", for topic: " << message.topic;
+			Log::write("Failed parsing payload: \"%s\", for topic: %s", message.payload.c_str(), message.topic.c_str());
 			return;
 		}
 
@@ -242,7 +242,7 @@ public:
 		bool value = false;
 		if (!parseBool(value, message.payload.c_str()))
 		{
-			std::cerr << "Could not parse data for topic: " << message.topic;
+			Log::write("Could not parse data for topic: %s", message.topic.c_str());
 			return;
 		}
 
@@ -366,9 +366,8 @@ int main(int argc, char* argv[])
 {
 	if (argc < 3)
 	{
-		printf("Too few arguments: %d\n", argc);
-		printf("Usage:\n");
-		printf("%s <mqtt host> <port>", argv[0]);
+		Log::write("Too few arguments: %d", argc);
+		Log::write("Usage: %s <mqtt host> <port>", argv[0]);
 		return -1;
 	}
 
@@ -376,11 +375,13 @@ int main(int argc, char* argv[])
 	const int port= atoi(argv[2]);
 	if (port == 0)
 	{
-		printf("Invalid port specified\n");
+		Log::write("Invalid port specified");
 		return -2;
 	}
 
-	printf("Starting service\n");
+	Log::enableConsole();
+
+	Log::write("Starting");
 	ComputerMqtt mqtt(host, port);
 
 	while (true)

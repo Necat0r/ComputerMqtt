@@ -1,7 +1,7 @@
 #include "Mqtt.h"
+#include "Log.h"
 
 #include <cstring>
-#include <ctime>
 
 Mqtt::Mqtt(const char * clientId, const char * host, int port)
 : mosquittopp(clientId, true /*clean session*/)
@@ -57,16 +57,5 @@ void Mqtt::on_message(const mosquitto_message * message)
 
 void Mqtt::on_log(int, const char * str)
 {
-	std::time_t now = std::time(nullptr);
-	std::tm localTime{};
-
-	if (localtime_s(&localTime, &now) == 0)
-	{
-		char timestamp[20]{};
-		std::strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &localTime);
-		printf("[%s] MQTT %s\n", timestamp, str);
-		return;
-	}
-
-	printf("MQTT %s\n", str);
+	Log::write("MQTT %s", str);
 }

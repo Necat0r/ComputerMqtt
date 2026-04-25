@@ -1,7 +1,6 @@
 
 #include "Monitor.h"
-
-#include <iostream>
+#include "Log.h"
 
 #include <Windows.h>
 #include <powrprof.h>
@@ -28,7 +27,7 @@ Monitor::Monitor(PowerCallback&& callback)
 	s_mainHook = SetWindowsHookEx(WH_CALLWNDPROCRET, ::hookProc, hInstance, GetCurrentThreadId());
 	if (s_mainHook == 0)
 	{
-		std::cout << "Hook failed with error: " << GetLastError() << std::endl;
+		Log::write("Hook failed with error: %lu", GetLastError());
 		return;
 	}
 
@@ -89,7 +88,7 @@ void Monitor::changeStatus(bool value)
 {
 	if (m_monitorOn != value)
 	{
-		std::cout << "Monitor switching " << (value ? "ON" : "OFF") << std::endl;
+		Log::write("Monitor switching %s", value ? "ON" : "OFF");
 		m_monitorOn = value;
 		m_powerCallback(m_monitorOn);
 	}
