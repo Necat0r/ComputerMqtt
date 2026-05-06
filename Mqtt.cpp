@@ -49,9 +49,17 @@ void Mqtt::on_connect(int rc)
 	onConnected();
 }
 
-void Mqtt::on_disconnect(int /*rc*/)
+void Mqtt::on_disconnect(int rc)
 {
 	onDisconnected();
+
+	// rc != 0 means unexpected disconnect (e.g. network loss after suspend/resume).
+	// Trigger an async reconnect so the next loop() call attempts to reconnect.
+	if (rc != 0)
+	{
+		Log::write("MQTT unexpected disconnect (rc=%d), reconnecting...", rc);
+		reconnect_async();
+	}
 }
 
 void Mqtt::on_message(const mosquitto_message * message)

@@ -45,7 +45,7 @@ protected:
 
 private:
 	virtual void on_connect(int rc) override;
-	virtual void on_disconnect(int rc) override;
+	virtual void on_disconnect(int rc) override; // rc != 0 → unexpected;
 	virtual void on_message(const struct mosquitto_message * message) override;
 	virtual void on_log(int /*level*/, const char * str) override;
 };
