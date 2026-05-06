@@ -157,6 +157,9 @@ public:
 		statusMessage.payload = "false";
 		publish(statusMessage, true);
 
+		// Try to force the message to be delivered.
+		loop();
+
 		standby();
 	}
 
