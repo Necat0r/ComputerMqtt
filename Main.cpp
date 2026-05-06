@@ -8,6 +8,7 @@
 #include "Log.h"
 
 #include <Windows.h>
+#include <shellapi.h>
 #include <algorithm>
 
 static const char* ClientId = "computerMqtt";
@@ -67,6 +68,11 @@ namespace
 	}
 }
 
+static constexpr UINT WMAPP_TRAYICON     = WM_APP + 1;
+static constexpr UINT WMAPP_SETCONNECTED = WM_APP + 2;
+static constexpr UINT TRAY_ICON_ID       = 1;
+static HWND g_hwnd = nullptr;
+
 class ComputerMqtt : public Mqtt
 {
 public:
@@ -78,6 +84,8 @@ public:
 
 	virtual void onConnected() override
 	{
+		PostMessage(g_hwnd, WMAPP_SETCONNECTED, TRUE, 0);
+
 		subscribe(PowerControl);
 		subscribe(MonitorControl);
 
@@ -105,6 +113,11 @@ public:
 		initPowerNotifications([this](bool resumed) {
 			publish({ PowerStatus, resumed ? "true" : "false" }, true);
 		});
+	}
+
+	virtual void onDisconnected() override
+	{
+		PostMessage(g_hwnd, WMAPP_SETCONNECTED, FALSE, 0);
 	}
 
 	virtual void onMessage(const Message& message) override
@@ -367,6 +380,42 @@ public:
 
 static DWORD g_mainThreadId = 0;
 
+static void trayAdd(HWND hwnd)
+{
+	NOTIFYICONDATA nid{};
+	nid.cbSize           = sizeof(nid);
+	nid.hWnd             = hwnd;
+	nid.uID              = TRAY_ICON_ID;
+	nid.uFlags           = NIF_ICON | NIF_TIP | NIF_SHOWTIP | NIF_MESSAGE;
+	nid.uCallbackMessage = WMAPP_TRAYICON;
+	nid.hIcon            = LoadIcon(nullptr, IDI_WARNING); // disconnected until MQTT connects
+	wcscpy_s(nid.szTip, L"ComputerMqtt \u2014 Disconnected");
+	Shell_NotifyIcon(NIM_ADD, &nid);
+	nid.uVersion = NOTIFYICON_VERSION_4;
+	Shell_NotifyIcon(NIM_SETVERSION, &nid);
+}
+
+static void trayUpdate(HWND hwnd, bool connected)
+{
+	NOTIFYICONDATA nid{};
+	nid.cbSize = sizeof(nid);
+	nid.hWnd   = hwnd;
+	nid.uID    = TRAY_ICON_ID;
+	nid.uFlags = NIF_ICON | NIF_TIP | NIF_SHOWTIP;
+	nid.hIcon  = LoadIcon(nullptr, connected ? IDI_INFORMATION : IDI_WARNING);
+	wcscpy_s(nid.szTip, connected ? L"ComputerMqtt \u2014 Connected" : L"ComputerMqtt \u2014 Disconnected");
+	Shell_NotifyIcon(NIM_MODIFY, &nid);
+}
+
+static void trayRemove(HWND hwnd)
+{
+	NOTIFYICONDATA nid{};
+	nid.cbSize = sizeof(nid);
+	nid.hWnd   = hwnd;
+	nid.uID    = TRAY_ICON_ID;
+	Shell_NotifyIcon(NIM_DELETE, &nid);
+}
+
 static BOOL WINAPI ctrlHandler(DWORD ctrlType)
 {
 	if (ctrlType == CTRL_C_EVENT || ctrlType == CTRL_CLOSE_EVENT)
@@ -382,9 +431,38 @@ static LRESULT CALLBACK msgWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 	if (msg == WM_TIMER && wParam == 1)
 	{
 		auto* mqtt = reinterpret_cast<ComputerMqtt*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
-		if (mqtt) mqtt->loop();
+		if (mqtt)
+			mqtt->loop();
+
 		return 0;
 	}
+
+	if (msg == WMAPP_SETCONNECTED)
+	{
+		trayUpdate(hwnd, wParam != 0);
+		return 0;
+	}
+
+	if (msg == WMAPP_TRAYICON)
+	{
+		if (LOWORD(lParam) == WM_RBUTTONUP)
+		{
+			POINT pt{};
+			GetCursorPos(&pt);
+			HMENU menu = CreatePopupMenu();
+			AppendMenuW(menu, MF_STRING, 1, L"Quit");
+			SetForegroundWindow(hwnd);
+			int cmd = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
+				pt.x, pt.y, 0, hwnd, nullptr);
+			// Required: clears the foreground-lock so SetForegroundWindow works next time.
+			PostMessage(hwnd, WM_NULL, 0, 0);
+			DestroyMenu(menu);
+			if (cmd == 1)
+				PostQuitMessage(0);
+		}
+		return 0;
+	}
+
 	return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
@@ -410,7 +488,9 @@ int main(int argc, char* argv[])
 	g_mainThreadId = GetCurrentThreadId();
 	SetConsoleCtrlHandler(ctrlHandler, TRUE);
 
-	// Hidden message-only window — receives WM_TIMER and will host the tray icon.
+	// Hidden top-level window (0x0, never shown).
+	// Must be a real top-level window, NOT HWND_MESSAGE, so that
+	// SetForegroundWindow succeeds and TrackPopupMenu shows instantly.
 	HINSTANCE hInstance = GetModuleHandle(nullptr);
 	WNDCLASSEX wc{};
 	wc.cbSize        = sizeof(wc);
@@ -419,8 +499,11 @@ int main(int argc, char* argv[])
 	wc.lpszClassName = L"ComputerMqttMsg";
 	RegisterClassEx(&wc);
 
-	HWND hwnd = CreateWindowEx(0, L"ComputerMqttMsg", nullptr, 0,
-		0, 0, 0, 0, HWND_MESSAGE, nullptr, hInstance, nullptr);
+	HWND hwnd = CreateWindowEx(0, L"ComputerMqttMsg", nullptr, WS_POPUP,
+		0, 0, 0, 0, nullptr, nullptr, hInstance, nullptr);
+
+	g_hwnd = hwnd;
+	trayAdd(hwnd);
 
 	Log::write("Starting");
 	ComputerMqtt mqtt(host, port);
@@ -433,6 +516,7 @@ int main(int argc, char* argv[])
 		DispatchMessage(&winMsg);
 
 	KillTimer(hwnd, 1);
+	trayRemove(hwnd);
 	DestroyWindow(hwnd);
 	Log::write("Shutting down");
 	return 0;

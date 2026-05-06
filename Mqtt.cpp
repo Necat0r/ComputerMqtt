@@ -49,6 +49,11 @@ void Mqtt::on_connect(int rc)
 	onConnected();
 }
 
+void Mqtt::on_disconnect(int /*rc*/)
+{
+	onDisconnected();
+}
+
 void Mqtt::on_message(const mosquitto_message * message)
 {
 	Message msg{ message->topic, std::string((const char*)message->payload, message->payloadlen) };

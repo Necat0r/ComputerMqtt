@@ -40,10 +40,12 @@ public:
 
 protected:
 	virtual void onConnected() = 0;
+	virtual void onDisconnected() {}
 	virtual void onMessage(const Message& message) = 0;
 
 private:
 	virtual void on_connect(int rc) override;
+	virtual void on_disconnect(int rc) override;
 	virtual void on_message(const struct mosquitto_message * message) override;
 	virtual void on_log(int /*level*/, const char * str) override;
 };
