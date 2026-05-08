@@ -5,6 +5,7 @@
     <ClCompile Include="Monitor.cpp" />
     <ClCompile Include="Mqtt.cpp" />
     <ClCompile Include="Power.cpp" />
+    <ClCompile Include="TrayIcon.cpp" />
     <ClCompile Include="Audio\AudioManager.cpp">
       <Filter>Audio</Filter>
     </ClCompile>
@@ -15,6 +16,7 @@
     <ClInclude Include="Monitor.h" />
     <ClInclude Include="Mqtt.h" />
     <ClInclude Include="Power.h" />
+    <ClInclude Include="TrayIcon.h" />
     <ClInclude Include="Audio\PolicyConfig.h">
       <Filter>Audio</Filter>
     </ClInclude>

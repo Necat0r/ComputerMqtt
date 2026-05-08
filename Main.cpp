@@ -1,14 +1,14 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-#include "Mqtt.h"
-#include "Power.h"
-#include "Monitor.h"
 #include "Audio\AudioManager.h"
 #include "HomeAssistant.h"
 #include "Log.h"
+#include "Monitor.h"
+#include "Mqtt.h"
+#include "Power.h"
+#include "TrayIcon.h"
 
 #include <Windows.h>
-#include <shellapi.h>
 #include <algorithm>
 
 static const char* ClientId = "computerMqtt";
@@ -68,9 +68,6 @@ namespace
 	}
 }
 
-static constexpr UINT WMAPP_TRAYICON     = WM_APP + 1;
-static constexpr UINT WMAPP_SETCONNECTED = WM_APP + 2;
-static constexpr UINT TRAY_ICON_ID       = 1;
 static HWND g_hwnd = nullptr;
 
 class ComputerMqtt : public Mqtt
@@ -84,7 +81,7 @@ public:
 
 	virtual void onConnected() override
 	{
-		PostMessage(g_hwnd, WMAPP_SETCONNECTED, TRUE, 0);
+		PostMessage(g_hwnd, TrayIcon::WM_SETCONNECTED, TRUE, 0);
 
 		subscribe(PowerControl);
 		subscribe(MonitorControl);
@@ -117,7 +114,7 @@ public:
 
 	virtual void onDisconnected() override
 	{
-		PostMessage(g_hwnd, WMAPP_SETCONNECTED, FALSE, 0);
+		PostMessage(g_hwnd, TrayIcon::WM_SETCONNECTED, FALSE, 0);
 	}
 
 	virtual void onMessage(const Message& message) override
@@ -383,42 +380,6 @@ public:
 
 static DWORD g_mainThreadId = 0;
 
-static void trayAdd(HWND hwnd)
-{
-	NOTIFYICONDATA nid{};
-	nid.cbSize           = sizeof(nid);
-	nid.hWnd             = hwnd;
-	nid.uID              = TRAY_ICON_ID;
-	nid.uFlags           = NIF_ICON | NIF_TIP | NIF_SHOWTIP | NIF_MESSAGE;
-	nid.uCallbackMessage = WMAPP_TRAYICON;
-	nid.hIcon            = LoadIcon(nullptr, IDI_WARNING); // disconnected until MQTT connects
-	wcscpy_s(nid.szTip, L"ComputerMqtt \u2014 Disconnected");
-	Shell_NotifyIcon(NIM_ADD, &nid);
-	nid.uVersion = NOTIFYICON_VERSION_4;
-	Shell_NotifyIcon(NIM_SETVERSION, &nid);
-}
-
-static void trayUpdate(HWND hwnd, bool connected)
-{
-	NOTIFYICONDATA nid{};
-	nid.cbSize = sizeof(nid);
-	nid.hWnd   = hwnd;
-	nid.uID    = TRAY_ICON_ID;
-	nid.uFlags = NIF_ICON | NIF_TIP | NIF_SHOWTIP;
-	nid.hIcon  = LoadIcon(nullptr, connected ? IDI_INFORMATION : IDI_WARNING);
-	wcscpy_s(nid.szTip, connected ? L"ComputerMqtt \u2014 Connected" : L"ComputerMqtt \u2014 Disconnected");
-	Shell_NotifyIcon(NIM_MODIFY, &nid);
-}
-
-static void trayRemove(HWND hwnd)
-{
-	NOTIFYICONDATA nid{};
-	nid.cbSize = sizeof(nid);
-	nid.hWnd   = hwnd;
-	nid.uID    = TRAY_ICON_ID;
-	Shell_NotifyIcon(NIM_DELETE, &nid);
-}
-
 static BOOL WINAPI ctrlHandler(DWORD ctrlType)
 {
 	if (ctrlType == CTRL_C_EVENT || ctrlType == CTRL_CLOSE_EVENT)
@@ -440,13 +401,13 @@ static LRESULT CALLBACK msgWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 		return 0;
 	}
 
-	if (msg == WMAPP_SETCONNECTED)
+	if (msg == TrayIcon::WM_SETCONNECTED)
 	{
-		trayUpdate(hwnd, wParam != 0);
+		TrayIcon::update(hwnd, wParam != 0);
 		return 0;
 	}
 
-	if (msg == WMAPP_TRAYICON)
+	if (msg == TrayIcon::WM_TRAYICON)
 	{
 		if (LOWORD(lParam) == WM_RBUTTONUP)
 		{
@@ -506,7 +467,7 @@ int main(int argc, char* argv[])
 		0, 0, 0, 0, nullptr, nullptr, hInstance, nullptr);
 
 	g_hwnd = hwnd;
-	trayAdd(hwnd);
+	TrayIcon::add(hwnd);
 
 	Log::write("Starting");
 	ComputerMqtt mqtt(host, port);
@@ -519,7 +480,7 @@ int main(int argc, char* argv[])
 		DispatchMessage(&winMsg);
 
 	KillTimer(hwnd, 1);
-	trayRemove(hwnd);
+	TrayIcon::remove(hwnd);
 	DestroyWindow(hwnd);
 	Log::write("Shutting down");
 	return 0;

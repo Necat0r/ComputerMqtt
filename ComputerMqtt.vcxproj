@@ -103,6 +103,7 @@
     <ClCompile Include="Monitor.cpp" />
     <ClCompile Include="Mqtt.cpp" />
     <ClCompile Include="Power.cpp" />
+    <ClCompile Include="TrayIcon.cpp" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
@@ -114,6 +115,7 @@
     <ClInclude Include="Monitor.h" />
     <ClInclude Include="Mqtt.h" />
     <ClInclude Include="Power.h" />
+    <ClInclude Include="TrayIcon.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
