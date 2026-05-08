@@ -18,7 +18,7 @@ namespace
 	std::string s_logPath;
 	std::string s_logPathBak;
 
-	// Resolve path once on first use.
+	// Resolve path once on first use (also used by Log::getPath).
 	const std::string& logPath()
 	{
 		if (!s_logPath.empty())
@@ -113,5 +113,10 @@ namespace Log
 
 		std::lock_guard<std::mutex> lock(s_mutex);
 		writeRaw(line);
+	}
+
+	const char* getPath()
+	{
+		return logPath().c_str();
 	}
 }

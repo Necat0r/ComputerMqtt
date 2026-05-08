@@ -414,7 +414,9 @@ static LRESULT CALLBACK msgWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 			POINT pt{};
 			GetCursorPos(&pt);
 			HMENU menu = CreatePopupMenu();
-			AppendMenuW(menu, MF_STRING, 1, L"Quit");
+			AppendMenuW(menu, MF_STRING, 1, L"Open Log");
+			AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+			AppendMenuW(menu, MF_STRING, 2, L"Quit");
 			SetForegroundWindow(hwnd);
 			int cmd = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
 				pt.x, pt.y, 0, hwnd, nullptr);
@@ -422,7 +424,14 @@ static LRESULT CALLBACK msgWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 			PostMessage(hwnd, WM_NULL, 0, 0);
 			DestroyMenu(menu);
 			if (cmd == 1)
+			{
+				// Open log file in the default text editor.
+				ShellExecuteA(nullptr, "open", Log::getPath(), nullptr, nullptr, SW_SHOWNORMAL);
+			}
+			else if (cmd == 2)
+			{
 				PostQuitMessage(0);
+			}
 		}
 		return 0;
 	}

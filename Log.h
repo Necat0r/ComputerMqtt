@@ -8,4 +8,7 @@ namespace Log
 
 	// Write a formatted log line. Always goes to file + OutputDebugString.
 	void write(const char* fmt, ...);
+
+	// Returns the absolute path to the current log file.
+	const char* getPath();
 }
