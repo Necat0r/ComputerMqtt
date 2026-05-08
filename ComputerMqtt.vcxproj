@@ -98,6 +98,7 @@
   <ItemGroup>
     <ClCompile Include="Audio\AudioManager.cpp" />
     <ClCompile Include="HomeAssistant.cpp" />
+    <ClCompile Include="Install.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Monitor.cpp" />
@@ -111,6 +112,7 @@
     <ClInclude Include="Audio\PolicyConfig.h" />
     <ClInclude Include="Audio\SafePtr.h" />
     <ClInclude Include="HomeAssistant.h" />
+    <ClInclude Include="Install.h" />
     <ClInclude Include="Log.h" />
     <ClInclude Include="Monitor.h" />
     <ClInclude Include="Mqtt.h" />

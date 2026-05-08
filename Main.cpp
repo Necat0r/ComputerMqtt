@@ -2,6 +2,7 @@
 
 #include "Audio\AudioManager.h"
 #include "HomeAssistant.h"
+#include "Install.h"
 #include "Log.h"
 #include "Monitor.h"
 #include "Mqtt.h"
@@ -441,25 +442,68 @@ static LRESULT CALLBACK msgWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
 int main(int argc, char* argv[])
 {
-	if (argc < 3)
+	// --install <host> <port>
+	if (argc >= 2 && strcmp(argv[1], "--install") == 0)
 	{
-		Log::write("Too few arguments: %d", argc);
-		Log::write("Usage: %s <mqtt host> <port>", argv[0]);
-		return -1;
+		if (argc < 4)
+		{
+			Log::write("Usage: %s --install <host> <port>", argv[0]);
+			return -1;
+		}
+		return installAutoStart(argv[2], argv[3]);
 	}
 
-	const char* host = argv[1];
-	const int port= atoi(argv[2]);
+	// --uninstall
+	if (argc >= 2 && strcmp(argv[1], "--uninstall") == 0)
+	{
+		return uninstallAutoStart();
+	}
+
+	const char* host = nullptr;
+	int port = 0;
+	bool consoleMode = false;
+
+	// --console <host> <port>
+	if (argc >= 2 && strcmp(argv[1], "--console") == 0)
+	{
+		if (argc < 4)
+		{
+			Log::write("Usage: %s --console <host> <port>", argv[0]);
+			return -1;
+		}
+		consoleMode = true;
+		host = argv[2];
+		port = atoi(argv[3]);
+	}
+	else
+	{
+		// <host> <port>  — silent tray run
+		if (argc < 3)
+		{
+			Log::write("Usage: %s [--install|--uninstall|--console] <host> <port>", argv[0]);
+			return -1;
+		}
+		host = argv[1];
+		port = atoi(argv[2]);
+	}
+
 	if (port == 0)
 	{
 		Log::write("Invalid port specified");
 		return -2;
 	}
 
-	Log::enableConsole();
+	if (consoleMode)
+	{
+		AllocConsole();
+		FILE* dummy = nullptr;
+		freopen_s(&dummy, "CONOUT$", "w", stdout);
+		freopen_s(&dummy, "CONOUT$", "w", stderr);
+		Log::enableConsole();
+		SetConsoleCtrlHandler(ctrlHandler, TRUE);
+	}
 
 	g_mainThreadId = GetCurrentThreadId();
-	SetConsoleCtrlHandler(ctrlHandler, TRUE);
 
 	// Hidden top-level window (0x0, never shown).
 	// Must be a real top-level window, NOT HWND_MESSAGE, so that
